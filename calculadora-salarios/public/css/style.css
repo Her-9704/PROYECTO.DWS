@@ -1,0 +1,107 @@
+/* Contenedor interno del header para separar título de enlaces */
+.header-content {
+    display: flex;
+    justify-content: space-between; /* Empuja el título a la izquierda y nav a la derecha */
+    align-items: center;
+    padding: 0 5%; /* Espaciado a los lados */
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Estilos para la navegación */
+.nav-links a {
+    color: white;
+    text-decoration: none;
+    margin-left: 20px;
+    font-size: 0.9rem;
+    transition: opacity 0.3s;
+}
+
+.nav-links a:hover {
+    text-decoration: underline;
+    opacity: 0.8;
+}
+
+/* Clase para resaltar la página donde estás */
+.nav-links a.active {
+    font-weight: bold;
+    border-bottom: 2px solid white;
+}
+
+/* Ajuste para móviles: si la pantalla es pequeña, apilamos los elementos */
+@media (max-width: 600px) {
+    .header-content {
+        flex-direction: column;
+        text-align: center;
+    }
+    .nav-links {
+        margin-top: 10px;
+    }
+    .nav-links a {
+        margin: 0 10px;
+    }
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* Header y Footer con los colores de la bandera */
+header, footer {
+    background-color: #0047AB; /* Azul El Salvador */
+    color: white;
+    text-align: center;
+    padding: 1rem 0;
+}
+
+/* Asegura que el contenido principal ocupe el espacio central */
+main {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    flex-direction: column;
+}
+
+/* Estilo sencillo para el formulario */
+form {
+    border: 1px solid #ccc;
+    padding: 20px;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 400px;
+}
+
+.field {
+    margin-bottom: 15px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+input {
+    width: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+button {
+    width: 100%;
+    padding: 10px;
+    background-color: #0047AB;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #003380;
+}
