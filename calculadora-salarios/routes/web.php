@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CalculadoraController;
+use App\Http\Controllers\DescuentoController;
 
 /*
 |--------------------------------------------------------------------------
@@ -15,30 +16,22 @@ Route::get('/dashboard', [CalculadoraController::class, 'index'])
 
 /*
 |--------------------------------------------------------------------------
-| Rutas protegidas
+| Rutas SOLO ADMIN
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth','admin'])->group(function(){
 
-    // Inicio / Calculadora salario
-    Route::get('/', [CalculadoraController::class, 'index'])
-        ->name('salario.index');
+    Route::get('/admin-test', function(){
+        return "ADMIN";
+    });
 
-    Route::post('/calcular-salario',
-        [CalculadoraController::class, 'calcularSalario'])
-        ->name('salario.calcular');
+    /*
+    |--------------------------------------------------------------------------
+    | Historial SOLO ADMIN
+    |--------------------------------------------------------------------------
+    */
 
-    // Prestaciones
-    Route::get('/prestaciones',
-        [CalculadoraController::class, 'prestacionesIndex'])
-        ->name('prestaciones.index');
-
-    Route::post('/calcular-prestaciones',
-        [CalculadoraController::class, 'calcularPrestaciones'])
-        ->name('prestaciones.calcular');
-
-    // Historial
     Route::get('/historial',
         [CalculadoraController::class, 'historial'])
         ->name('historial');
@@ -54,12 +47,51 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/historial/{id}',
         [CalculadoraController::class, 'destroy'])
         ->name('historial.destroy');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Descuentos SOLO ADMIN
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/descuentos',
+        [DescuentoController::class, 'index'])
+        ->name('descuentos');
+
+    Route::post('/descuentos',
+        [DescuentoController::class, 'update'])
+        ->name('descuentos.update');
+
 });
 
 /*
 |--------------------------------------------------------------------------
-| Auth routes
+| Rutas protegidas usuarios autenticados
 |--------------------------------------------------------------------------
 */
+
+Route::middleware(['auth'])->group(function () {
+
+    // Inicio / Calculadora salario
+
+    Route::get('/',
+        [CalculadoraController::class, 'index'])
+        ->name('salario.index');
+
+    Route::post('/calcular-salario',
+        [CalculadoraController::class, 'calcularSalario'])
+        ->name('salario.calcular');
+
+    // Prestaciones
+
+    Route::get('/prestaciones',
+        [CalculadoraController::class, 'prestacionesIndex'])
+        ->name('prestaciones.index');
+
+    Route::post('/calcular-prestaciones',
+        [CalculadoraController::class, 'calcularPrestaciones'])
+        ->name('prestaciones.calcular');
+
+});
 
 require __DIR__.'/auth.php';

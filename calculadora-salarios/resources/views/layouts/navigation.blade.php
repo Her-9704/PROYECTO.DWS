@@ -16,13 +16,42 @@
                 <a href="{{ route('dashboard') }}"
                    class="text-slate-200 hover:text-white">
 
-                    Inicio
+                    Calculo Salarial
 
                 </a>
+
+                <a href="{{ route('prestaciones.index') }}"
+       class="text-slate-200 hover:text-white">
+
+        Prestaciones
+
+    </a>
+
+        @if(Auth::user()->role == 'admin')
+
+                    <a href="{{ route('historial') }}"
+                       class="text-slate-200 hover:text-white">
+
+                        Historial
+
+                    </a>
+
+                @endif
 
                 <span class="text-slate-400">
                     {{ Auth::user()->name }}
                 </span>
+
+                @if(Auth::user()->role == 'admin')
+
+<a href="{{ route('descuentos') }}"
+class="text-slate-200 hover:text-white">
+
+Descuentos
+
+</a>
+
+@endif
 
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf

@@ -5,22 +5,25 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use DateTime;
 use App\Models\Calculo;
+use App\Models\Descuento;
 
 class CalculadoraController extends Controller
 {
-    private const ISSS = 0.03;
-    private const AFP = 0.0725;
-    private const TECHO_AFP = 7045.06;
-    private const TECHO_ISSS = 1000.00;
-
-    public function index() {
+    public function index()
+    {
         return view('salario');
     }
 
-    public function prestacionesIndex() {
+    public function prestacionesIndex()
+    {
         return view('prestaciones');
     }
-    
+
+    /*
+    |--------------------------------------------------------------------------
+    | CALCULO SALARIO
+    |--------------------------------------------------------------------------
+    */
 
     public function calcularSalario(Request $request)
     {
@@ -33,6 +36,8 @@ class CalculadoraController extends Controller
             'frecuencia' => 'required|in:mensual,quincenal',
         ]);
 
+        $config = Descuento::first();
+
         $nombre = $request->nombre;
         $salarioBase = (float)$request->salarioBase;
         $bono = (float)$request->bonoMensual;
@@ -41,145 +46,348 @@ class CalculadoraController extends Controller
         $descuentosAdicionales = (float)$request->descuentosAdicionales;
 
         $salarioQuincenal = $salarioBase / 2;
-        $horaExtraPagar = $horasExtra > 0 ? (($salarioBase / 30) / 8) * 2 * $horasExtra : 0;
+
+        $horaExtraPagar =
+            $horasExtra > 0
+            ? (($salarioBase / 30) / 8) * 2 * $horasExtra
+            : 0;
 
         if ($frecuencia === 'mensual') {
-            $ingresoTotal = $salarioBase + $bono + $horaExtraPagar;
-            $descuentoAFP = min($ingresoTotal, self::TECHO_AFP) * self::AFP;
-            $descuentoISSS = min($ingresoTotal, self::TECHO_ISSS) * self::ISSS;
-            
-            $rentaNoGravada = $ingresoTotal - $descuentoAFP - $descuentoISSS;
-            $descuentoISR = $this->calcularISRMensual($rentaNoGravada);
-            
-            $salarioLiquido = $ingresoTotal - $descuentoAFP - $descuentoISSS - $descuentoISR - $descuentosAdicionales;
+
+            $ingresoTotal =
+                $salarioBase +
+                $bono +
+                $horaExtraPagar;
+
+            $descuentoAFP =
+                min($ingresoTotal, $config->techo_afp)
+                * $config->afp;
+
+            $descuentoISSS =
+                min($ingresoTotal, $config->techo_isss)
+                * $config->isss;
+
+            $rentaNoGravada =
+                $ingresoTotal
+                - $descuentoAFP
+                - $descuentoISSS;
+
+            $descuentoISR =
+                $this->calcularISRMensual($rentaNoGravada);
+
         } else {
 
-            $ingresoTotal = $salarioQuincenal + $bono + $horaExtraPagar;
-            $descuentoAFP = min($ingresoTotal, self::TECHO_AFP) * self::AFP;
-            $descuentoISSS = ($salarioBase <= self::TECHO_ISSS) ? ($ingresoTotal * self::ISSS) : (self::TECHO_ISSS * self::ISSS) / 2;
-            
-            $rentaNoGravada = $ingresoTotal - $descuentoAFP - $descuentoISSS;
-            $descuentoISR = $this->calcularISRQuincenal($rentaNoGravada);
-            
-            $salarioLiquido = $ingresoTotal - $descuentoAFP - $descuentoISSS - $descuentoISR - $descuentosAdicionales;
+            $ingresoTotal =
+                $salarioQuincenal
+                + $bono
+                + $horaExtraPagar;
+
+            $descuentoAFP =
+                min($ingresoTotal, $config->techo_afp)
+                * $config->afp;
+
+            $descuentoISSS =
+                ($salarioBase <= $config->techo_isss)
+                ? ($ingresoTotal * $config->isss)
+                : (($config->techo_isss * $config->isss) / 2);
+
+            $rentaNoGravada =
+                $ingresoTotal
+                - $descuentoAFP
+                - $descuentoISSS;
+
+            $descuentoISR =
+                $this->calcularISRQuincenal($rentaNoGravada);
         }
 
-        Calculo::create([
-    'salario_base' => $salarioBase,
-    'isss' => $descuentoISSS,
-    'afp' => $descuentoAFP,
-    'renta' => $descuentoISR,
-    'salario_neto' => $salarioLiquido,
-    'tipo_calculo' => 'salario'
-]);
+        $salarioLiquido =
+            $ingresoTotal
+            - $descuentoAFP
+            - $descuentoISSS
+            - $descuentoISR
+            - $descuentosAdicionales;
 
-        return view('salario', compact('nombre', 'salarioBase', 'salarioQuincenal', 'bono', 'horaExtraPagar', 'descuentoAFP', 'descuentoISSS', 'descuentoISR', 'descuentosAdicionales', 'salarioLiquido', 'frecuencia'));
+        Calculo::create([
+
+            'user_id' => auth()->id(),
+
+            'salario_base' => $salarioBase,
+
+            'isss' => $descuentoISSS,
+
+            'afp' => $descuentoAFP,
+
+            'renta' => $descuentoISR,
+
+            'salario_neto' => $salarioLiquido,
+
+            'tipo_calculo' => 'salario'
+
+        ]);
+
+        return view('salario', compact(
+
+            'nombre',
+            'salarioBase',
+            'salarioQuincenal',
+            'bono',
+            'horaExtraPagar',
+            'descuentoAFP',
+            'descuentoISSS',
+            'descuentoISR',
+            'descuentosAdicionales',
+            'salarioLiquido',
+            'frecuencia'
+
+        ));
     }
 
-    private function calcularISRMensual($renta) {
-        if ($renta <= 550.00) return 0;
-        if ($renta <= 895.24) return (($renta - 550.00) * 0.10) + 17.67;
-        if ($renta <= 2038.10) return (($renta - 895.24) * 0.20) + 60.00;
+    private function calcularISRMensual($renta)
+    {
+        if ($renta <= 550) return 0;
+        if ($renta <= 895.24) return (($renta - 550) * 0.10) + 17.67;
+        if ($renta <= 2038.10) return (($renta - 895.24) * 0.20) + 60;
         return (($renta - 2038.10) * 0.30) + 288.57;
     }
 
-    private function calcularISRQuincenal($renta) {
-        if ($renta <= 275.00) return 0;
-        if ($renta <= 447.62) return (($renta - 275.00) * 0.10) + 8.83;
-        if ($renta <= 1019.05) return (($renta - 447.62) * 0.20) + 30.00;
+    private function calcularISRQuincenal($renta)
+    {
+        if ($renta <= 275) return 0;
+        if ($renta <= 447.62) return (($renta - 275) * 0.10) + 8.83;
+        if ($renta <= 1019.05) return (($renta - 447.62) * 0.20) + 30;
         return (($renta - 1019.05) * 0.30) + 144.28;
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | PRESTACIONES
+    |--------------------------------------------------------------------------
+    */
 
     public function calcularPrestaciones(Request $request)
     {
         $request->validate([
+
             'fechaInicio' => 'required|date',
-            'fechaFin' => 'required|date|after_or_equal:fechaInicio',
-            'salarioBase' => 'required|numeric|min:0',
+
+            'fechaFin' =>
+                'nullable|date|after_or_equal:fechaInicio',
+
+            'salarioBase' =>
+                'required|numeric|min:0'
+
         ]);
 
         $salario = (float)$request->salarioBase;
-        $fi = new DateTime($request->fechaInicio);
-        $ff = new DateTime($request->fechaFin);
-        $diferenciaDias = $fi->diff($ff)->days;
 
+        $inicio = new DateTime($request->fechaInicio);
 
-        if ($diferenciaDias < 365) {
-            $aguinaldo = ($salario / 30) * ($diferenciaDias / 365) * 15; // Proporcional base 15 días
-        } elseif ($diferenciaDias <= 1095) {
-            $aguinaldo = ($salario / 30) * 15;
-        } elseif ($diferenciaDias <= 3650) {
-            $aguinaldo = ($salario / 30) * 19;
+        $fin =
+            $request->fechaFin
+            ? new DateTime($request->fechaFin)
+            : new DateTime();
+
+        $dias =
+            $inicio->diff($fin)->days;
+
+        $anios =
+            $dias / 365;
+
+        if ($dias < 365) {
+
+            $aguinaldo =
+                ($salario / 30)
+                * 15
+                * $anios;
+
+        } elseif ($dias <= 1095) {
+
+            $aguinaldo =
+                ($salario / 30) * 15;
+
+        } elseif ($dias <= 3650) {
+
+            $aguinaldo =
+                ($salario / 30) * 19;
+
         } else {
-            $aguinaldo = ($salario / 30) * 21;
+
+            $aguinaldo =
+                ($salario / 30) * 21;
         }
 
+        $vacaciones =
+            (($salario / 30) * 15)
+            * 0.30;
 
-        $vacaciones = (($salario / 30) * 15) * 0.30;
+        $renunciaVoluntaria = 0;
 
-        $salarioMinimo2 = 817.60; 
-        if ($diferenciaDias >= 730) {
-            $baseCalculo = min($salario, $salarioMinimo2);
-            $renunciaVoluntaria = (($baseCalculo / 30) * 15) * ($diferenciaDias / 365);
-        } else {
-            $renunciaVoluntaria = 0;
+        if ($dias >= 730) {
+
+            $base =
+                min($salario, 817.60);
+
+            $renunciaVoluntaria =
+                (($base / 30) * 15)
+                * $anios;
         }
 
-        $salarioMinimo4 = 1635.20;
-        $baseIndemnizacion = min($salario, $salarioMinimo4);
-        $indemnizacion = $baseIndemnizacion * ($diferenciaDias / 365);
+        $baseIndemnizacion =
+            min($salario, 1635.20);
+
+        $indemnizacion =
+            $baseIndemnizacion
+            * $anios;
 
         Calculo::create([
-    'salario_base' => $salario,
-    'aguinaldo' => $aguinaldo,
-    'vacaciones' => $vacaciones,
-    'indemnizacion' => $indemnizacion,
-    'tipo_calculo' => 'prestaciones'
-]);
 
-        return view('prestaciones', compact('diferenciaDias', 'aguinaldo', 'vacaciones', 'renunciaVoluntaria', 'indemnizacion'));
+            'user_id' => auth()->id(),
+
+            'salario_base' => $salario,
+
+            'aguinaldo' => $aguinaldo,
+
+            'vacaciones' => $vacaciones,
+
+            'renuncia_voluntaria' => $renunciaVoluntaria,
+
+            'indemnizacion' => $indemnizacion,
+
+            'tipo_calculo' => 'prestaciones'
+
+        ]);
+
+        return view('prestaciones', compact(
+
+            'dias',
+
+            'aguinaldo',
+
+            'vacaciones',
+
+            'renunciaVoluntaria',
+
+            'indemnizacion'
+
+        ));
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | HISTORIAL
+    |--------------------------------------------------------------------------
+    */
+
     public function historial()
-{
-    $calculos = Calculo::orderBy('created_at', 'desc')->get();
+    {
+        $calculos = Calculo::with('user')
+            ->latest()
+            ->get();
 
-    return view('historial', compact('calculos'));
+        return view('historial', compact('calculos'));
+    }
+
+    public function edit($id)
+    {
+        $calculo = Calculo::findOrFail($id);
+
+        return view(
+            'editarHistorial',
+            compact('calculo')
+        );
+    }
+
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+
+            'salario_base' =>
+                'required|numeric|min:0'
+
+        ]);
+
+        $config = Descuento::first();
+
+        $calculo =
+            Calculo::findOrFail($id);
+
+        $salario =
+            (float)$request->salario_base;
+
+        if($calculo->tipo_calculo == 'salario'){
+
+            $afp =
+                min($salario, $config->techo_afp)
+                * $config->afp;
+
+            $isss =
+                min($salario, $config->techo_isss)
+                * $config->isss;
+
+            $renta =
+                $this->calcularISRMensual(
+                    $salario - $afp - $isss
+                );
+
+            $neto =
+                $salario
+                - $afp
+                - $isss
+                - $renta;
+
+            $calculo->update([
+
+                'salario_base' => $salario,
+
+                'afp' => $afp,
+
+                'isss' => $isss,
+
+                'renta' => $renta,
+
+                'salario_neto' => $neto
+
+            ]);
+
+        }else{
+
+            $calculo->update([
+
+                'salario_base' => $salario,
+
+                'aguinaldo' =>
+                    ($salario/30)*15,
+
+                'vacaciones' =>
+                    (($salario/30)*15)*0.30,
+
+                'renuncia_voluntaria' =>
+                    min($salario,817.60),
+
+                'indemnizacion' =>
+                    min($salario,1635.20)
+
+            ]);
+        }
+
+        return redirect()
+            ->route('historial')
+            ->with(
+                'success',
+                'Registro actualizado'
+            );
+    }
+
+    public function destroy($id)
+    {
+        Calculo::findOrFail($id)
+            ->delete();
+
+        return redirect()
+            ->route('historial')
+            ->with(
+                'success',
+                'Registro eliminado'
+            );
+    }
 }
-
-public function edit($id)
-{
-    $calculo = Calculo::findOrFail($id);
-
-    return view('editarHistorial', compact('calculo'));
-}
-
-public function update(Request $request, $id)
-{
-    $request->validate([
-        'salario_base' => 'required|numeric|min:0'
-    ]);
-
-    $calculo = Calculo::findOrFail($id);
-
-    $calculo->update([
-        'salario_base' => $request->salario_base
-    ]);
-
-    return redirect()
-        ->route('historial')
-        ->with('success','Registro actualizado');
-}
-
-public function destroy($id)
-{
-    $calculo = Calculo::findOrFail($id);
-
-    $calculo->delete();
-
-    return redirect()
-        ->route('historial')
-        ->with('success','Registro eliminado');
-}
-}
-

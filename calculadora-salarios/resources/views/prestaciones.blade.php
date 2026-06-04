@@ -6,19 +6,28 @@
 
 <div class="grid lg:grid-cols-2 gap-8">
 
-    <!-- Formulario -->
+    <!-- FORMULARIO -->
+
     <div class="bg-white rounded-2xl shadow-lg p-8">
 
         <h2 class="text-2xl font-bold mb-6 text-slate-800">
+
             Datos Laborales
+
         </h2>
 
-        <form action="{{ route('prestaciones.calcular') }}" method="POST" class="space-y-5">
+        <form action="{{ route('prestaciones.calcular') }}"
+              method="POST"
+              class="space-y-5">
+
             @csrf
 
             <div>
+
                 <label class="block mb-2 font-medium text-slate-700">
-                    Fecha de inicio
+
+                    Fecha de inicio en la empresa
+
                 </label>
 
                 <input
@@ -26,27 +35,48 @@
                     name="fechaInicio"
                     value="{{ old('fechaInicio') }}"
                     required
+                    class="w-full border rounded-xl p-3">
 
-                    class="w-full border rounded-xl p-3 focus:ring-2 focus:ring-blue-500">
+                @error('fechaInicio')
+
+                    <p class="text-red-500 text-sm mt-1">
+
+                        {{ $message }}
+
+                    </p>
+
+                @enderror
+
             </div>
 
             <div>
+
                 <label class="block mb-2 font-medium text-slate-700">
-                    Fecha finalización / actual
+
+                    Fecha finalización (o actual)
+
                 </label>
 
                 <input
                     type="date"
                     name="fechaFin"
                     value="{{ old('fechaFin') }}"
-                    required
-
                     class="w-full border rounded-xl p-3">
+
+                <small class="text-gray-500">
+
+                    Déjalo vacío si continúa trabajando
+
+                </small>
+
             </div>
 
             <div>
+
                 <label class="block mb-2 font-medium text-slate-700">
-                    Salario mensual
+
+                    Salario base mensual ($)
+
                 </label>
 
                 <input
@@ -55,11 +85,22 @@
                     name="salarioBase"
                     value="{{ old('salarioBase') }}"
                     required
-
                     class="w-full border rounded-xl p-3">
+
+                @error('salarioBase')
+
+                    <p class="text-red-500 text-sm mt-1">
+
+                        {{ $message }}
+
+                    </p>
+
+                @enderror
+
             </div>
 
             <button
+                type="submit"
                 class="w-full bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700">
 
                 Calcular Prestaciones
@@ -71,50 +112,89 @@
     </div>
 
 
-    <!-- Resultados -->
+    <!-- RESULTADOS -->
 
     <div class="bg-slate-900 text-white rounded-2xl shadow-lg p-8">
 
         <h2 class="text-2xl font-bold mb-6">
-            Resultados
+
+            Resumen de prestaciones:
+
         </h2>
 
-        @if(isset($diferenciaDias))
+        @if(isset($dias))
 
             <div class="space-y-4">
 
                 <div class="bg-slate-800 rounded-xl p-4">
+
                     Tiempo laborado:
-                    <strong>{{ $diferenciaDias }} días</strong>
+
+                    <strong>
+
+                        {{ $dias }} días
+
+                    </strong>
+
                 </div>
 
                 <div class="bg-emerald-600 rounded-xl p-4">
+
                     Aguinaldo:
-                    <strong>${{ number_format($aguinaldo,2) }}</strong>
+
+                    <strong>
+
+                        ${{ number_format($aguinaldo,2) }}
+
+                    </strong>
+
                 </div>
 
                 <div class="bg-blue-600 rounded-xl p-4">
+
                     Vacaciones:
-                    <strong>${{ number_format($vacaciones,2) }}</strong>
+
+                    <strong>
+
+                        ${{ number_format($vacaciones,2) }}
+
+                    </strong>
+
                 </div>
 
-                <div class="bg-yellow-500 rounded-xl p-4 text-black">
+                <div class="bg-yellow-500 text-black rounded-xl p-4">
+
                     Renuncia voluntaria:
-                    <strong>${{ number_format($renunciaVoluntaria,2) }}</strong>
+
+                    <strong>
+
+                        ${{ number_format($renunciaVoluntaria,2) }}
+
+                    </strong>
+
                 </div>
 
                 <div class="bg-red-500 rounded-xl p-4">
+
                     Indemnización:
-                    <strong>${{ number_format($indemnizacion,2) }}</strong>
+
+                    <strong>
+
+                        ${{ number_format($indemnizacion,2) }}
+
+                    </strong>
+
                 </div>
 
             </div>
 
         @else
 
-            <p class="text-slate-300">
-                Completa el formulario para calcular prestaciones.
-            </p>
+            <div class="text-slate-300">
+
+                Complete los datos laborales para generar el cálculo.
+
+            </div>
 
         @endif
 
